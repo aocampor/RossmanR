@@ -44,8 +44,13 @@ for(item in columns){
 for(item in columns){
   testOpen[item] <- as.numeric(testOpen[[item]])
 }
+
+train <- train[train$Sales < 17000,]
 sales <- train$Sales
 train$Sales <- NULL
+
+#hist(train$Sales)
+#100*nrow(train[train$Sales > 17000,])/nrow(train)
 
 id <- testOpen$Id
 testOpen$Id <- NULL
@@ -63,14 +68,17 @@ par  <-  list(booster = "gbtree", objective = "reg:linear",
               min_child_weight = 0.02, eta = 0.12, gamma = 0.002,
               subsample = 0.0014, colsample_bytree = 0.12,
               max_depth = 21, max_delta_step = 0.1,
-              verbose = 1, scale_pos_weight = 1)
+              verbose = 1, scale_pos_weight = 1,  nthread = 16)
 
 ##selecting number of Rounds
 
-n_rounds= 1483  #nrow(train)
+n_rounds= 2400  #nrow(train)
 ptm <- proc.time()
-x.mod.t  <- xgb.train(params = par, data = tr.x , nrounds = n_rounds)
-xgb.save(x.mod.t, '/home/aocampor/workspace/Rossman/src/trained5000.model')
+#x.mod.t  <- xgb.train(params = par, data = tr.x , nrounds = n_rounds)
+x.mod.t  <- xgboost(params = par, data = tr.x , nrounds = n_rounds)
+#cvxgb <- xgb.cv(params = par, data = tr.x , nrounds = n_rounds, nfold = 10)
+#plot(c(1:nrow(cvxgb)), cvxgb$train.rmse.mean)
+#xgb.save(x.mod.t, '/home/aocampor/workspace/Rossman/src/trained1483.model')
 proc.time() - ptm 
 pred <- predict(x.mod.t, te.x)
 
@@ -87,6 +95,6 @@ ids <- c(id, testClosed$Id, testNA$Id)
 sub.file = data.frame(Id = ids, Sales = preds)
 
 #sub.file = aggregate( data.frame( Sales = sub.file$Sales), by = list(Id = sub.file$Id), mean)
-write.csv(sub.file, "/home/aocampor/workspace/Rossman/src/benchmark_open1483.csv", row.names = FALSE, quote = FALSE)
+write.csv(sub.file, "/home/aocampor/workspace/Rossman/src/benchmark_open3400_salesless17000.csv", row.names = FALSE, quote = FALSE)
 hist(sub.file$Sales)
-
+hist(pred.sub)

@@ -95,6 +95,6 @@ ids <- c(id, testClosed$Id, testNA$Id)
 sub.file = data.frame(Id = ids, Sales = preds)
 
 #sub.file = aggregate( data.frame( Sales = sub.file$Sales), by = list(Id = sub.file$Id), mean)
-write.csv(sub.file, "/home/aocampor/workspace/Rossman/src/benchmark_open3400_salesless17000.csv", row.names = FALSE, quote = FALSE)
+write.csv(sub.file, "benchmark_open3400_salesless17000.csv", row.names = FALSE, quote = FALSE)
 hist(sub.file$Sales)
 hist(pred.sub)

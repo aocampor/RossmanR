@@ -59,79 +59,26 @@ testOpen$Id <- NULL
 sales.log <- log(sales + 1)
 
 trainMatrix <- as.matrix(train)
+testMatrix <- as.matrix(testOpen)
 str(sales)
 
 ptm <- proc.time()
 svp <- ksvm(trainMatrix, sales, type="C-svc",kernel='rbfdot',C=100,scaled=c())
 proc.time() - ptm
 
+pred = predict(svp,testMatrix)
+
+preds <- c( pred, testClosed$Prediction, testNA$Prediction)
+ids <- c(id, testClosed$Id, testNA$Id)
+
+## generating data frame for submission
+sub.file = data.frame(Id = ids, Sales = preds)
+
+#sub.file = aggregate( data.frame( Sales = sub.file$Sales), by = list(Id = sub.file$Id), mean)
+write.csv(sub.file, "/home/aocampor/workspace/Rossman/src/svn_salesless17000.csv", row.names = FALSE, quote = FALSE)
 #svmfit <- svm(sales.log, data = train, kernel = "linear", cost = 10, scale = FALSE)
 #plot(svmfit, train)
 
 ## treating cost as log transfromation is working good on this data set
 #trainMatrix <- as.matrix(train)
 #testMatrix <- as.matrix(testOpen)
-
-
-###############################
-
-n <- 150 # number of data points
-p <- 2
-
-sigma <- 1 # variance of the distribution
-meanpos <- 0 # centre of the distribution of positive examples
-meanneg <- 3 # centre of the distribution of negative examples
-npos <- round(n/2) # number of positive examples
-nneg <- n-npos # number of negative examples
-# Generate the positive and negative examples
-xpos <- matrix(rnorm(npos*p,mean=meanpos,sd=sigma),npos,p)
-xneg <- matrix(rnorm(nneg*p,mean=meanneg,sd=sigma),npos,p)
-x <- rbind(xpos,xneg)
-
-# Generate the labels
-y <- matrix(c(rep(1,npos),rep(-1,nneg)))
-# Visualize the data
-plot(x,col=ifelse(y>0,1,2))
-legend("topleft",c('Positive','Negative'),col=seq(2),pch=1,text.col=seq(2))
-## Prepare a training and a test set ##
-ntrain <- round(n*0.8) # number of training examples
-tindex <- sample(n,ntrain) # indices of training samples
-xtrain <- x[tindex,]
-xtest <- x[-tindex,]
-ytrain <- y[tindex]
-ytest <- y[-tindex]
-istrain=rep(0,n)
-istrain[tindex]=1
-# Visualize
-plot(x,col=ifelse(y>0,1,2),pch=ifelse(istrain==1,1,2))
-legend("topleft",c('Positive Train','Positive Test','Negative Train','Negative Test'),
-       col=c(1,1,2,2),pch=c(1,2,1,2),text.col=c(1,1,2,2))
-# load the kernlab package
-library(kernlab)
-# train the SVM
-ptm <- proc.time()
-svp <- ksvm(xtrain,ytrain,type="C-svc",kernel='vanilladot',C=100,scaled=c())
-proc.time() - ptm
-attributes(svp)
-plot(svp,data=xtrain)
-# Predict labels on test
-ypred = predict(svp,xtest)
-table(ytest,ypred)
-# Compute accuracy
-sum(ypred==ytest)/length(ytest)
-# Compute at the prediction scores
-ypredscore = predict(svp,xtest,type="decision")
-# Check that the predicted labels are the signs of the scores
-table(ypredscore > 0,ypred)
-# Package to compute ROC curve, precision-recall etc...
-library(ROCR)
-pred <- prediction(ypredscore,ytest)
-# Plot ROC curve
-perf <- performance(pred, measure = "tpr", x.measure = "fpr")
-plot(perf)
-# Plot precision/recall curve
-perf <- performance(pred, measure = "prec", x.measure = "rec")
-plot(perf)
-# Plot accuracy as function of threshold
-perf <- performance(pred, measure = "acc")
-plot(perf)

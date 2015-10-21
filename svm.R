@@ -1,4 +1,4 @@
-library("e1071")
+#library("e1071")
 library(lubridate)
 library(Matrix)
 library(xgboost)
@@ -58,8 +58,11 @@ id <- testOpen$Id
 testOpen$Id <- NULL
 sales.log <- log(sales + 1)
 
+trainMatrix <- as.matrix(train)
+str(sales)
+
 ptm <- proc.time()
-svp <- ksvm(train,sales.log, type="C-svc",kernel='linear',C=100,scaled=c())
+svp <- ksvm(trainMatrix, sales, type="C-svc",kernel='rbfdot',C=100,scaled=c())
 proc.time() - ptm
 
 #svmfit <- svm(sales.log, data = train, kernel = "linear", cost = 10, scale = FALSE)

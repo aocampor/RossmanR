@@ -21,20 +21,19 @@ train$day <- day(as.Date(train$Date))
 
 train$Date <- NULL
 
-days <- c(1,2,3,4,5,6,7)
-means <- NULL
-for(it in days){
-  firstday <- train[train$DayOfWeek == it, ]
-  means <- c(means, mean(firstday$Sales))
-}
-means.df <-  data.frame(DayOfWeek = days, MeanSales = means)
-means.df$MeanSales <- log(means.df$MeanSales)
-
-str(means.df)
+#days <- c(1,2,3,4,5,6,7)
+#means <- NULL
+#for(it in days){
+#  firstday <- train[train$DayOfWeek == it, ]
+#  means <- c(means, mean(firstday$Sales))
+#}
+#means.df <-  data.frame(DayOfWeek = days, MeanSales = means)
+#means.df$MeanSales <- log(means.df$MeanSales)
+#str(means.df)
 
 #merging datasets
 train <- merge(train, store, by="Store") 
-train <- merge(train, means.df, by="DayOfWeek")
+#train <- merge(train, means.df, by="DayOfWeek")
 #str(train)
 #hist(train$MeanSales)
 
@@ -70,6 +69,10 @@ testing$Customers <- NULL
 #cor(training, use="pairwise.complete.obs")
 #plot(training$Sales, training$CompetitionDistance)
 #nrow(testing)
+
+#hist(training$Sales)
+#100*nrow(training[training$Sales > 17000,])/nrow(training)
+#training <- training[training$Sales < 17000, ]
 sales <- training$Sales
 training$Sales <- NULL
 #plot(sales,training$MeanSales,xlab="Sales",ylab="Mean Sales",col=abs(sales-training$MeanSales))
@@ -87,8 +90,13 @@ sales.log <- log(sales + 1)
 ctr.log <- log(ctr + 1)
 #nrow(testingOpen)
 
-training$MeanSales <- NULL
-testingOpen$MeanSales <- NULL
+#training$MeanSales <- NULL
+#testingOpen$MeanSales <- NULL
+
+names <- names(training)
+for(nam in names){
+  plot(training$Sales, training[,nam], xlab = "Sales", ylab = nam)
+}
 
 trainingM <- as.matrix(training)
 testingM <- as.matrix(testingOpen)
@@ -99,24 +107,45 @@ testing.x <- xgb.DMatrix(testingM, missing = NA)
 ##selecting number of Rounds
 errors <- NULL
 xaxis <- NULL
-step <- 1483
-for ( i in 1:1){
+step <- 4000
+i <- 1
+#for ( i in 1:1){/home/aocampor/workspace/Rossman/src/
   par  <-  list(booster = "gbtree", objective = "reg:linear", 
                 min_child_weight = 0.02, eta = 0.12, gamma = 0.002, 
                 subsample = 0.0014, colsample_bytree = 1, max_depth = 21, 
-                max_delta_step = 0.1, verbose = 1, scale_pos_weight = 1, eval_metric = "rmse", eval_metric = "logloss")
-  x.mod.t  <- xgb.train(params = par, data = training.x , nrounds = i*step)
-  cvxgb <- xgb.cv(params = par, data = training.x, nrounds = i*step, nfold = 5)
+                max_delta_step = 0.1, verbose = 1, scale_pos_weight = 1, eval_metric = "rmse")
+  #x.mod.t  <- xgb.train(params = par, data = training.x , nrounds = i*step)
+  x.mod.t  <- xgboost(params = par, data = training.x , nrounds = 4000)
+  cvxgb <- xgb.cv(params = par, data = training.x, nrounds = step, nfold = 3)
   pred <- predict(x.mod.t, testing.x)
   xaxis <- c(xaxis, i*step)
   errors <- c(errors,sqrt( mean( (pred - ctr.log)^2 ) ) )
-}
+#}
+cvxgb1
+plot(cvxgb1)
+cvxgb$index <- order 
+cvxgb1 <- cvxgb[ cvxgb$index > 1250, ]
+cvxgb1 <- cvxgb1[ cvxgb1$index < 1400, ]
+
+names <- names(training)
+xgb.importance(names, model = x.mod.t)
+names(test)
+
 order <- c(1:nrow(cvxgb))
-plot(order, cvxgb$train.rmse.mean)
-lines(order, cvxgb$test.rmse.mean)
+plot(cvxgb1$index, cvxgb1$test.rmse.mean)
+lines(cvxgb1$index, cvxgb1$test.rmse.mean)
+plot(cvxgb$test.rmse.mean, cvxgb$test.rmse.std)
+
+cvxgb$Order <- order
+
+cvxgb1 <- cvxgb[cvxgb$test.rmse.std < 0.002 , ]
+cvxgb2 <- cvxgb1[cvxgb1$test.rmse.mean < 1, ]
+nrow(cvxgb2)
+cvxgb2$Ranking <-sqrt( cvxgb2$train.rmse.mean * cvxgb2$train.rmse.mean + cvxgb2$train.rmse.std * cvxgb2$train.rmse.std  )  
+cvxgb2
 
 plot(xaxis, errors, xlab="subsample", ylab="errors")
-heat <- heat.colors(40000, alpha = 1)
+heat <- topo.colors(40000, alpha = 1)
 color <- NULL
 for(i in 1:length(ctr.log)){
   color <- c(color, heat[[abs(exp(ctr.log[[i]])- exp(pred[[i]]))]])

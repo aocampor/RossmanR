@@ -45,7 +45,7 @@ for(item in columns){
   testOpen[item] <- as.numeric(testOpen[[item]])
 }
 
-train <- train[train$Sales < 17000,]
+#train <- train[train$Sales < 17000,]
 sales <- train$Sales
 train$Sales <- NULL
 
@@ -72,12 +72,14 @@ par  <-  list(booster = "gbtree", objective = "reg:linear",
 
 ##selecting number of Rounds
 
-n_rounds= 2400  #nrow(train)
+n_rounds= 10000  #nrow(train)
 ptm <- proc.time()
 #x.mod.t  <- xgb.train(params = par, data = tr.x , nrounds = n_rounds)
 x.mod.t  <- xgboost(params = par, data = tr.x , nrounds = n_rounds)
-#cvxgb <- xgb.cv(params = par, data = tr.x , nrounds = n_rounds, nfold = 10)
-#plot(c(1:nrow(cvxgb)), cvxgb$train.rmse.mean)
+cvxgb <- xgb.cv(params = par, data = tr.x , nrounds = n_rounds, nfold = 4)
+cvxgb$rank <- c(1:nrow(cvxgb))
+cvxgb1 <- cvxgb[cvxgb$rank > 4000]
+plot(cvxgb1$rank, cvxgb1$test.rmse.mean)
 #xgb.save(x.mod.t, '/home/aocampor/workspace/Rossman/src/trained1483.model')
 proc.time() - ptm 
 pred <- predict(x.mod.t, te.x)
@@ -93,8 +95,8 @@ ids <- c(id, testClosed$Id, testNA$Id)
 
 ## generating data frame for submission
 sub.file = data.frame(Id = ids, Sales = preds)
-
+#sub.file
 #sub.file = aggregate( data.frame( Sales = sub.file$Sales), by = list(Id = sub.file$Id), mean)
-write.csv(sub.file, "benchmark_open3400_salesless17000.csv", row.names = FALSE, quote = FALSE)
+write.csv(sub.file, "/home/aocampor/workspace/Rossman/src/benchmark_open653.csv", row.names = FALSE, quote = FALSE)
 hist(sub.file$Sales)
 hist(pred.sub)

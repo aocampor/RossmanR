@@ -72,14 +72,16 @@ par  <-  list(booster = "gbtree", objective = "reg:linear",
 
 ##selecting number of Rounds
 
-n_rounds= 10000  #nrow(train)
+n_rounds= 6300 #10000  #nrow(train)
 ptm <- proc.time()
-#x.mod.t  <- xgb.train(params = par, data = tr.x , nrounds = n_rounds)
-x.mod.t  <- xgboost(params = par, data = tr.x , nrounds = n_rounds)
-cvxgb <- xgb.cv(params = par, data = tr.x , nrounds = n_rounds, nfold = 4)
-cvxgb$rank <- c(1:nrow(cvxgb))
-cvxgb1 <- cvxgb[cvxgb$rank > 4000]
-plot(cvxgb1$rank, cvxgb1$test.rmse.mean)
+x.mod.t  <- xgb.train(params = par, data = tr.x , nrounds = n_rounds)
+#x.mod.t  <- xgboost(params = par, data = tr.x , nrounds = n_rounds)
+#cvxgb <- xgb.cv(params = par, data = tr.x , nrounds = n_rounds, nfold = 4)
+#cvxgb$rank <- c(1:nrow(cvxgb))
+#cvxgb1 <- cvxgb[cvxgb$rank > 6200]
+#cvxgb1 <- cvxgb1[cvxgb1$rank < 6500]
+#plot(cvxgb1$train.rmse.mean, cvxgb1$test.rmse.mean)#, ylim=c(0.189,0.191))
+#points(cvxgb1$rank, cvxgb1$train.rmse.mean, col=2)
 #xgb.save(x.mod.t, '/home/aocampor/workspace/Rossman/src/trained1483.model')
 proc.time() - ptm 
 pred <- predict(x.mod.t, te.x)
@@ -98,5 +100,5 @@ sub.file = data.frame(Id = ids, Sales = preds)
 #sub.file
 #sub.file = aggregate( data.frame( Sales = sub.file$Sales), by = list(Id = sub.file$Id), mean)
 write.csv(sub.file, "/home/aocampor/workspace/Rossman/src/benchmark_open653.csv", row.names = FALSE, quote = FALSE)
-hist(sub.file$Sales)
-hist(pred.sub)
+#hist(sub.file$Sales)
+#hist(pred.sub)

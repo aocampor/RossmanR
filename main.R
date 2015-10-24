@@ -80,7 +80,7 @@ x.mod.t  <- xgb.train(params = par, data = tr.x , nrounds = n_rounds)
 #cvxgb$rank <- c(1:nrow(cvxgb))
 #cvxgb1 <- cvxgb[cvxgb$rank > 6200]
 #cvxgb1 <- cvxgb1[cvxgb1$rank < 6500]
-plot(cvxgb1$train.rmse.std, cvxgb1$test.rmse.mean)#, ylim=c(0.189,0.191))
+#plot(cvxgb$train.rmse.std, cvxgb$test.rmse.mean)#, ylim=c(0.189,0.191))
 names <- names(train)
 xgb.importance(names, model = x.mod.t)
 #points(cvxgb1$rank, cvxgb1$train.rmse.mean, col=2)
@@ -101,6 +101,6 @@ ids <- c(id, testClosed$Id, testNA$Id)
 sub.file = data.frame(Id = ids, Sales = preds)
 #sub.file
 #sub.file = aggregate( data.frame( Sales = sub.file$Sales), by = list(Id = sub.file$Id), mean)
-write.csv(sub.file, "/home/aocampor/workspace/Rossman/benchmark_open653.csv", row.names = FALSE, quote = FALSE)
+write.csv(sub.file, "/home/aocampor/workspace/Rossman/benchmark_optimized6300.csv", row.names = FALSE, quote = FALSE)
 #hist(sub.file$Sales)
 #hist(pred.sub)

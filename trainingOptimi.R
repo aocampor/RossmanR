@@ -21,38 +21,37 @@ train$day <- day(as.Date(train$Date))
 
 train$Date <- NULL
 
-#days <- c(1,2,3,4,5,6,7)
-#means <- NULL
-#for(it in days){
-#  firstday <- train[train$DayOfWeek == it, ]
-#  means <- c(means, mean(firstday$Sales))
-#}
-#means.df <-  data.frame(DayOfWeek = days, MeanSales = means)
-#means.df$MeanSales <- log(means.df$MeanSales)
-#str(means.df)
-
 #merging datasets
-training <- merge(train, store, by="Store") 
-#train <- merge(train, means.df, by="DayOfWeek")
-#str(train)
-#hist(train$MeanSales)
+train <- merge(train, store, by="Store") 
 
 #set.seed(10)
-#trainTemp <- split(train, sample(rep(1:2, 508604)))
-#training <- trainTemp$`1`
-#testing <- trainTemp$`2`
+trainTemp <- split(train, sample(rep(1:2, 0.8*nrow(train))))
+training <- trainTemp$`1`
+testing <- trainTemp$`2`
 
 columns <- c("StateHoliday", "StoreType", "Assortment", "PromoInterval")
 for(item in columns){
   training[item] <- as.numeric(training[[item]])
 }
-#for(item in columns){
-#  testing[item] <- as.numeric(testing[[item]])
-#}
+
+for(item in columns){
+  testing[item] <- as.numeric(testing[[item]])
+}
+
+#names(training)
+columns <- c("StateHoliday", "Promo2", "PromoInterval", "SchoolHoliday", 
+             "Assorment", "Promo", "StoreType", "year", "Promo2SinceYear", 
+             "month", "Promo2SinceWeek", "CompetitionOpenSinceMonth",
+             "DayOfWeek", "week", "CompetitionOpenSinceYear")
+
+for(item in columns){
+  training[item] <- NULL
+  testing[item] <- NULL
+}
 
 training <- training[ training$Open == 1 , ]
 training$Customers <- NULL
-#testing$Customers <- NULL
+testing$Customers <- NULL
 
 #cor(training, use="pairwise.complete.obs")
 #names_training <- names(training)
@@ -76,127 +75,75 @@ sales <- training$Sales
 training$Sales <- NULL
 #plot(sales,training$MeanSales,xlab="Sales",ylab="Mean Sales",col=abs(sales-training$MeanSales))
 
-#testingClose <- testing[ testing$Open == 0 , ]
-#testingClose$Prediction <- 0
-#testingOpen <- testing[ testing$Open == 1 , ]
+testingClose <- testing[ testing$Open == 0 , ]
+testingClose$Prediction <- 0
+testingOpen <- testing[ testing$Open == 1 , ]
 training$Open <- NULL
-#testingOpen$Open <- NULL
+testingOpen$Open <- NULL
 
-#ctr <- testingOpen$Sales
-#testingOpen$Sales <- NULL
+ctr <- testingOpen$Sales
+testingOpen$Sales <- NULL
 
 sales.log <- log(sales + 1)
-#ctr.log <- log(ctr + 1)
+ctr.log <- log(ctr + 1)
 #nrow(testingOpen)
-
+hist(sales.log, breaks = 100)
 #training$MeanSales <- NULL
 #testingOpen$MeanSales <- NULL
 
-#names <- names(training)
-#for(nam in names){
-#  plot(training$Sales, training[,nam], xlab = "Sales", ylab = nam)
-#}
+names <- names(training)
+#length(sales)
+#nrow(training)
+for(nam in names){
+  plot(sales, training[,nam], xlab = "Sales", ylab = nam)
+}
+#plot(training)
 
 trainingM <- as.matrix(training)
-#testingM <- as.matrix(testingOpen)
+testingM <- as.matrix(testingOpen)
 
 training.x <- xgb.DMatrix(trainingM, label = sales.log , missing = NA)
-#testing.x <- xgb.DMatrix(testingM, missing = NA)
+testing.x <- xgb.DMatrix(testingM, missing = NA)
 
 ##selecting number of Rounds
 errors <- NULL
 xaxis <- NULL
-step <- 2000
+step <- 1
+rounds = 400
 i <- 1
-#for ( i in 1:1){/home/aocampor/workspace/Rossman/src/
-par  <-  list(booster = "gbtree", objective = "reg:linear", 
-              min_child_weight = 0.02, eta = 0.12, gamma = 0.002, 
-              subsample = 0.0014, colsample_bytree = 1, max_depth = 21, 
-              max_delta_step = 0.1, verbose = 1, scale_pos_weight = 1, eval_metric = "rmse")
-x.mod.t  <- xgb.train(params = par, data = training.x , nrounds = step)
-#x.mod.t  <- xgboost(params = par, data = training.x , nrounds = 4000)
-cvxgb <- xgb.cv(params = par, data = training.x, nrounds = step, nfold = 3)
-#pred <- predict(x.mod.t, testing.x)
-#xaxis <- c(xaxis, step)
-#errors <- c(errors,sqrt( mean( (pred - ctr.log)^2 ) ) )
-#}
-#cvxgb1
-#plot(cvxgb1)
-cvxgb$index <- c(1:nrow(cvxgb)) 
-cvxgb1 <- cvxgb[ cvxgb$index > 1250, ]
-cvxgb1 <- cvxgb1[ cvxgb1$index < 1400, ]
+#for (i in 1:10){
+  par  <-  list(booster = "gbtree", objective = "reg:linear", 
+                min_child_weight = step, eta = 0.5, gamma = 0.5, 
+                #subsample = 0.0014, colsample_bytree = 1, 
+                max_depth = 21, 
+                max_delta_step = 0.1, 
+                verbose = 1, scale_pos_weight = 1, eval_metric = "rmse")
+  x.mod.t  <- xgb.train(params = par, data = training.x , nrounds = rounds)
+  #xgb.save(x.mod.t, '/home/aocampor/workspace/Rossman/src/train_nrounds4000_v.1Par_using80per_4variables.model')
+  #xgb.importance(names, model = x.mod.t)
+  pred <- predict(x.mod.t, testing.x)
+  #names(training)
+  cvxgb <- xgb.cv(params = par, data = training.x, nrounds = rounds, nfold = 3)
+  cvxgb$index <- c(1:nrow(cvxgb)) 
+  #cvxgb1 <- cvxgb[ cvxgb$index > 800, ]
+  #cvxgb1 <- cvxgb1[ cvxgb1$index < 4000, ]
+  plot(cvxgb$index, log(cvxgb$train.rmse.mean), main = "Log rmse mean")
+  points(cvxgb$index, log(cvxgb$test.rmse.mean), col="red")
+  plot(log(cvxgb$train.rmse.mean), log(cvxgb$train.rmse.std), main="std vs mean")
 
-names <- names(training)
-xgb.importance(names, model = x.mod.t)
-#names(test)
-
-#order <- c(1:nrow(cvxgb))
-plot(cvxgb1$index, cvxgb1$test.rmse.mean)
-points(cvxgb1$index, cvxgb1$test.rmse.mean)
-#plot(cvxgb$test.rmse.mean, cvxgb$test.rmse.std)
-
-#cvxgb$Order <- order
-
-#cvxgb1 <- cvxgb[cvxgb$test.rmse.std < 0.002 , ]
-#cvxgb2 <- cvxgb1[cvxgb1$test.rmse.mean < 1, ]
-#nrow(cvxgb2)
-#cvxgb2$Ranking <-sqrt( cvxgb2$train.rmse.mean * cvxgb2$train.rmse.mean + cvxgb2$train.rmse.std * cvxgb2$train.rmse.std  )  
-#cvxgb2
-
-#plot(xaxis, errors, xlab="subsample", ylab="errors")
-#heat <- topo.colors(40000, alpha = 1)
-#color <- NULL
-#for(i in 1:length(ctr.log)){
-#  color <- c(color, heat[[abs(exp(ctr.log[[i]])- exp(pred[[i]]))]])
-#}
-#plot( exp(ctr.log) - 1, exp(pred) - 1, ylab="Prediction", xlab = "Control Value Summer",col = color,  pch=19)
-#abline(0, 1)
-#cor(ctr.log, pred)
-
-#hist(training$MeanSales)
-
-#testingOpen$Control <- ctr.log
-#testingOpen$Prediction <- pred
-#testingOpen$Sales <- ctr
-
-#temp <- testingOpen[testingOpen$Control == 0 , ]
-#temp1 <- testingOpen[testingOpen$Control > 0 , ] 
-#str(temp)
-#hist(temp$DayOfWeek)
-#hist(temp1$DayOfWeek)
-#nrow(temp)/nrow(temp1)*100
-
-#temp <- testing[ testing$Control < 1,  ]
-#temp1 <- testing[ testing$Control > 1 & testing$Prediction > 7, ]
-#temp2 <- testing[ testing$Control > 1 & testing$Prediction <= 7 , ]
-
-#saturday <- testing[ testing$DayOfWeek == 7 , ]
-#weeko <- testing[ testing$DayOfWeek < 7, ]
-
-#temp3 <- testing[ testing$Open == 1 & testing$DayOfWeek == 7,]
-#temp4 <- testing[ testing$Open == 0 & testing$DayOfWeek == 7,]
-#temp5 <- testing[ testing$Open == 1 & testing$DayOfWeek < 7 , ]
-#temp6 <- testing[ testing$Open == 0 & testing$DayOfWeek < 7 , ]
-#temp7 <- testing[ testing$Open == 0 , ]
-#hist(temp7$Prediction )
-#str( temp5$Sales )
-
-#names <- names(temp1)
-#for(it in names){
-#  plot( testingOpen[[it]], pred, ylab="Prediction", col = testingOpen[[it]] - pred,  xlab = it, pch=19)
-#  plot( testingOpen[[it]], ctr.log, ylab="Control", col = testingOpen[[it]] - ctr.log, xlab = it, pch=19)
+  heat <- topo.colors(40000, alpha = 1)
+  comparisons <- data.frame(Control=exp(ctr.log)-1, Prediction=exp(pred)-1)
+  comparisons$diff <- comparisons$Control - comparisons$Prediction
+  #errors <- c(errors, mean(comparisons$diff))
+  #xaxis <- c(xaxis, i)
   
-  #hist( saturday[[it]], xlab = it )
-  #hist( weeko[[it]], xlab = it)
-#}
+  color <- heat[abs(comparisons$Control - comparisons$Prediction)]
+  plot( exp(ctr.log) - 1, exp(pred) - 1, ylab="Prediction", xlab = "Control",col = color,  pch=19)
+  #plot( exp(ctr.log) - 1, exp(pred) - 1, ylab="Prediction", xlab = "Control",  pch=19)
+  abline(0, 1, col = "red")
 
-#for(it in names){
-#  hist(temp[[it]] , xlab = it)
-#  hist(temp1[[it]] , xlab = it)
-#  hist(temp2[[it]] , xlab = it)
-#}
-#testingOpen$Color <- abs(ctr.log - pred)*10
-#testingOpen$Color <- 1 - abs(pred - ctr.log)/ctr.log
-#plot(testingOpen$Color, testingOpen$StateHoliday)
-#hist(1 - abs(pred - ctr.log)/ctr.log, breaks=100)
+  qqplot(comparisons$Control, comparisons$Prediction)
+  abline(0,1,col="red")
+  #cor(ctr.log, pred)
 
+plot(xaxis, errors)

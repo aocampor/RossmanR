@@ -12,13 +12,13 @@ store <- read.csv(file="/home/aocampor/workspace/Rossman/Data/store.csv",head=TR
 #adding Data variables
 train$Date  <- strptime(train$Date,format = "%Y-%m-%d", tz="GMT")
 train$year <- year(as.Date(train$Date))
-train$month <- month(as.Date(train$Date))
+#train$month <- month(as.Date(train$Date))
 train$week <- week(as.Date(train$Date))
 train$day <- day(as.Date(train$Date))
 
 test$Date  <- strptime(test$Date,format = "%Y-%m-%d", tz="GMT")
 test$year <- year(as.Date(test$Date))
-test$month <- month(as.Date(test$Date))
+#test$month <- month(as.Date(test$Date))
 test$week <- week(as.Date(test$Date))
 test$day <- day(as.Date(test$Date))
 
@@ -83,7 +83,8 @@ te.x <- xgb.DMatrix(testMatrix, missing=NA)
 par  <-  list(booster = "gbtree", objective = "reg:linear", 
               min_child_weight = 0.2, eta = 0.5, gamma = 0.5,
               #subsample = 0.0014, colsample_bytree = 0.12,
-              max_depth = 21, max_delta_step = 0.1,
+              max_depth = 21, 
+              max_delta_step = 1,
               verbose = 1, scale_pos_weight = 1, eval_metric = "rmse")
 
 ##selecting number of Rounds
@@ -104,14 +105,14 @@ x.mod.t  <- xgb.train(params = par, data = tr.x , nrounds = n_rounds)
 #names <- names(train)
 #xgb.importance(names, model = x.mod.t)
 #points(cvxgb1$rank, cvxgb1$train.rmse.mean, col=2)
-#xgb.save(x.mod.t, '/home/aocampor/workspace/Rossman/src/trained1483.model')
+xgb.save(x.mod.t, '/home/aocampor/workspace/Rossman/src/trained_nrounds220_05etagamma_deltastep01_nomonth.model')
 proc.time() - ptm 
 pred <- predict(x.mod.t, te.x)
 
 ###########################################
 ####In case we are loading something pretrained
-x.mod.t  <- xgb.load('/home/aocampor/workspace/Rossman/src/train_nrounds200_05etagamma.model')
-pred <- predict(x.mod.t, te.x)
+#x.mod.t  <- xgb.load('/home/aocampor/workspace/Rossman/src/train_nrounds200_05etagamma.model')
+#pred <- predict(x.mod.t, te.x)
 
 for(i in 1:10){
   x.mod.t  <- xgb.train(par,tr.x,n_rounds)
@@ -126,6 +127,6 @@ ids <- c(id, testClosed$Id, testNA$Id)
 sub.file = data.frame(Id = ids, Sales = preds)
 #sub.file
 #sub.file = aggregate( data.frame( Sales = sub.file$Sales), by = list(Id = sub.file$Id), mean)
-write.csv(sub.file, "/home/aocampor/workspace/Rossman/benchmark_allVariables_nrounds200_05etagamma.csv", row.names = FALSE, quote = FALSE)
+write.csv(sub.file, "/home/aocampor/workspace/Rossman/benchmark_allVariables_nrounds220_05etagamma_nomaxdeltastep.csv", row.names = FALSE, quote = FALSE)
 #hist(sub.file$Sales)
 #hist(pred.sub)

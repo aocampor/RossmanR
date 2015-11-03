@@ -2,7 +2,6 @@ library(lubridate)
 library(Matrix)
 library(xgboost)
 library(reshape2)
-library(ggplot2)
 
 train <- read.csv(file="/home/aocampor/workspace/Rossman/Data/train.csv",head=TRUE,sep=",", na.strings=c("NA", "NULL"))
 store <- read.csv(file="/home/aocampor/workspace/Rossman/Data/store.csv",head=TRUE,sep=",", na.strings=c("NA", "NULL"))
@@ -15,12 +14,11 @@ names(store)
 #adding Data variables
 train$Date  <- strptime(train$Date,format = "%Y-%m-%d", tz="GMT")
 train$year <- year(as.Date(train$Date))
-train$month <- month(as.Date(train$Date))
+#train$month <- month(as.Date(train$Date))
 train$week <- week(as.Date(train$Date))
 train$day <- day(as.Date(train$Date))
 
 train$Date <- NULL
-
 #merging datasets
 train <- merge(train, store, by="Store") 
 
@@ -81,22 +79,28 @@ testingOpen <- testing[ testing$Open == 1 , ]
 training$Open <- NULL
 testingOpen$Open <- NULL
 
+temptesting <- testingOpen[testingOpen$Sales < 1,] 
+str(temptesting)
+plot(temptesting)
+cor(temptesting)
+plot(training$month, training$week)
+
 ctr <- testingOpen$Sales
 testingOpen$Sales <- NULL
 
 sales.log <- log(sales + 1)
 ctr.log <- log(ctr + 1)
 #nrow(testingOpen)
-hist(sales.log, breaks = 100)
+hist(ctr.log, breaks = 100)
+
 #training$MeanSales <- NULL
 #testingOpen$MeanSales <- NULL
-
-names <- names(training)
+#names <- names(training)
 #length(sales)
 #nrow(training)
-for(nam in names){
-  plot(sales, training[,nam], xlab = "Sales", ylab = nam)
-}
+#for(nam in names){
+#  plot(sales, training[,nam], xlab = "Sales", ylab = nam)
+#}
 #plot(training)
 
 trainingM <- as.matrix(training)
@@ -108,8 +112,8 @@ testing.x <- xgb.DMatrix(testingM, missing = NA)
 ##selecting number of Rounds
 errors <- NULL
 xaxis <- NULL
-step <- 1
-rounds = 400
+step <- 0.2
+rounds = 200
 i <- 1
 #for (i in 1:10){
   par  <-  list(booster = "gbtree", objective = "reg:linear", 
@@ -118,30 +122,41 @@ i <- 1
                 max_depth = 21, 
                 max_delta_step = 0.1, 
                 verbose = 1, scale_pos_weight = 1, eval_metric = "rmse")
-  x.mod.t  <- xgb.train(params = par, data = training.x , nrounds = rounds)
+  x.mod.t  <- xgboost(params = par, data = training.x , nrounds = rounds)
   #xgb.save(x.mod.t, '/home/aocampor/workspace/Rossman/src/train_nrounds4000_v.1Par_using80per_4variables.model')
   #xgb.importance(names, model = x.mod.t)
   pred <- predict(x.mod.t, testing.x)
   #names(training)
+  ###################
   cvxgb <- xgb.cv(params = par, data = training.x, nrounds = rounds, nfold = 3)
   cvxgb$index <- c(1:nrow(cvxgb)) 
-  #cvxgb1 <- cvxgb[ cvxgb$index > 800, ]
-  #cvxgb1 <- cvxgb1[ cvxgb1$index < 4000, ]
-  plot(cvxgb$index, log(cvxgb$train.rmse.mean), main = "Log rmse mean")
-  points(cvxgb$index, log(cvxgb$test.rmse.mean), col="red")
-  plot(log(cvxgb$train.rmse.mean), log(cvxgb$train.rmse.std), main="std vs mean")
-
-  heat <- topo.colors(40000, alpha = 1)
-  comparisons <- data.frame(Control=exp(ctr.log)-1, Prediction=exp(pred)-1)
-  comparisons$diff <- comparisons$Control - comparisons$Prediction
-  #errors <- c(errors, mean(comparisons$diff))
-  #xaxis <- c(xaxis, i)
+  cvxgb1 <- cvxgb[ cvxgb$index > 150, ]
+  cvxgb1 <- cvxgb1[ cvxgb1$index < 200, ]
+  plot(cvxgb1$index, log(cvxgb1$train.rmse.mean), main = "Log rmse mean")
+  points(cvxgb1$index, log(cvxgb1$test.rmse.mean), col="red")
+  plot(cvxgb1$index, log(cvxgb1$test.rmse.mean)/log(cvxgb1$train.rmse.mean), main = "Log rmse mean")
+  plot(log(cvxgb1$train.rmse.mean), log(cvxgb1$train.rmse.std), main="std vs mean")
+  ######################
   
+  heat <- topo.colors(40000, alpha = 1)
+  comparisons <- data.frame(Control=ctr.log, Prediction=pred)
+  comparisons$diff <- comparisons$Control - comparisons$Prediction
   color <- heat[abs(comparisons$Control - comparisons$Prediction)]
-  plot( exp(ctr.log) - 1, exp(pred) - 1, ylab="Prediction", xlab = "Control",col = color,  pch=19)
+  plot( ctr.log , pred , ylab="Prediction", xlab = "Control",col = color,  pch=19)
   #plot( exp(ctr.log) - 1, exp(pred) - 1, ylab="Prediction", xlab = "Control",  pch=19)
   abline(0, 1, col = "red")
 
+  tempctr.log <- ctr.log[ctr.log < 1]
+  hist(tempctr.log, breaks=20)
+  tempctr.log
+  
+  hist(comparisons$Prediction - comparisons$Control, breaks=100)
+  m <- mean(comparisons$Prediction - comparisons$Control)
+  a <- comparisons$Prediction - m 
+  rms <- sqrt( mean(a*a) ) 
+  rms
+  m
+  
   qqplot(comparisons$Control, comparisons$Prediction)
   abline(0,1,col="red")
   #cor(ctr.log, pred)
